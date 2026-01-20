@@ -1,0 +1,29 @@
+version: 2
+plugins:
+- name: c
+  wasm:
+    url: file://../../../../../bin/sqlc-gen-c.wasm
+    sha256: ""
+sql:
+- engine: "sqlite"
+  queries: "queries.sql"
+  schema: "schema.sql"
+  codegen:
+  - plugin: c
+    out: gen
+    options:
+      prefix: sql_
+      sql_type_case: snake
+      struct_type_case: snake
+      field_type_case: snake
+      func_type_case: snake
+      sys_include:
+        - stdio.h
+      include:
+        - sqlite.h
+      out_h: models.h
+      out_c: models.c
+      sql_context:
+        - void *(*alloc)(void *, int)
+        - areana a
+
