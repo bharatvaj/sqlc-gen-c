@@ -81,6 +81,7 @@ func generate(req *plugin.GenerateRequest, options *opts.Options, enums []Enum, 
 		Enums:       enums,
 		Structs:     structs,
 		SqlcVersion: req.SqlcVersion,
+		Queries:     queries,
 		Options:     *options,
 	}
 
@@ -148,6 +149,12 @@ func generate(req *plugin.GenerateRequest, options *opts.Options, enums []Enum, 
 			Contents: []byte(code),
 		})
 	}
+
+	// debugOutput := fmt.Sprintf("queries=%d\n", len(queries))
+	// resp.Files = append(resp.Files, &plugin.File{
+	// 	Name:     "output.txt",
+	// 	Contents: []byte(debugOutput),
+	// })
 
 	return &resp, nil
 }
