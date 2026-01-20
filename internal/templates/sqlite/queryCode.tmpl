@@ -1,23 +1,30 @@
 {{define "queryFile"}}
 #include "sqlite3.h"
 #include "models.h"
-
 {{range .Queries}}
-
 {{if eq .Cmd ":one"}}
+{{if .Arg.EmitStruct}}
+typedef struct { {{- range .Arg.Struct.Fields}}
+    {{.Type}} {{.Name}};
+{{- end}}
+} {{.Arg.Type}};{{end}}
+
 {{range .Comments}}// {{.}}
 {{end -}}
 int sql_{{.MethodName}}(sql_context *ctx, {{.Arg.Pair}}, {{.Ret.DefineType}} *result) {
 
     const char *sql = "-- name: {{.MethodName}} {{.Cmd}}\n"
-    {{escape .SQL}};
+{{escape .SQL}};
 
     sqlite3_stmt *stmt;
     int rc = sqlite3_prepare_v2(ctx->db, sql, -1, &stmt, 0);
     if (rc != SQLITE_OK) return rc;
-
-    sqlite3_bind_text(stmt, 1, id, -1, SQLITE_STATIC);
-
+{{if .Arg.EmitStruct}}
+    {{- range .Arg.Struct.Fields}}
+    {{if eq .Type "sql_text"}}sqlite3_bind_text(stmt, 1, arg.{{.Name}}.data, -1, SQLITE_STATIC);
+    {{else if eq .Type "sql_nulltext"}}sqlite3_bind_text(stmt, 1, arg.{{.Name}}.data, -1, SQLITE_STATIC); // nullable
+    {{end}}{{- end}}
+{{- end}}
     rc = sqlite3_step(stmt);
     if (rc != SQLITE_DONE) return rc;
 
@@ -25,8 +32,5 @@ int sql_{{.MethodName}}(sql_context *ctx, {{.Arg.Pair}}, {{.Ret.DefineType}} *re
     if (rc != SQLITE_OK) return rc;
 
 	return SQLITE_OK;
-}
-{{end}}
-
-{{end}}
-{{end}}
+}{{end}}
+{{end}}{{end}}

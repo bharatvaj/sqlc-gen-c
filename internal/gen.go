@@ -209,19 +209,21 @@ func escapeCString(s string) string {
 	lines := strings.Split(s, "\n")
 	var result strings.Builder
 
-	for _, line := range lines {
+	for i, line := range lines {
 		// Escape special characters
 		escaped := strings.ReplaceAll(line, "\\", "\\\\")
 		escaped = strings.ReplaceAll(escaped, "\"", "\\\"")
 
-		result.WriteString("  \"")
+		result.WriteString("                      \"")
 		result.WriteString(escaped)
 		result.WriteString("\\n\"")
 
 		// if i == len(lines)-1 {
 		// 	result.WriteString(";")
 		// }
-		result.WriteString("\n")
+		if i != len(lines)-1 {
+			result.WriteString("\n")
+		}
 	}
 
 	return result.String()
