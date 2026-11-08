@@ -25,6 +25,13 @@ type tmplCtx struct {
 }
 
 func Generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.GenerateResponse, error) {
+	if req.Settings == nil || req.Settings.Engine != "sqlite" {
+		return nil, fmt.Errorf("this experimental fork supports SQLite only")
+	}
+	return generateSQLite(req)
+}
+
+func generateLegacy(ctx context.Context, req *plugin.GenerateRequest) (*plugin.GenerateResponse, error) {
 	options, err := opts.Parse(req)
 	if err != nil {
 		return nil, err

@@ -1,161 +1,55 @@
-# sqlc-gen-c
+# sqlc-gen-c: SQLite experimental branch
 
-A C codegen plugin using sqlc.  Will generate the sqlite3 & PostgreSQL (libpq) code.
+This branch is an experimental C99/sqlite3 generator for sqlc, based on
+`f132b10b4a113cc4088c0569cfc7db04d2cf1dff`. It has been tested with sqlc
+v1.31.1 and is intentionally limited to the query types needed by Procmac.
+It is not a general C plugin or a published upstream release.
 
-## Usage
+## Supported subset
 
-```yaml
-version: '2'
-plugins:
-- name: sqlite-c
-  wasm:
-    url: https://downloads.sqlc.dev/plugin/sqlc-gen-go_1.5.0.wasm
-    sha256: 4ca52949f4dc04b55188439f5de0ae20af2a71e3534b87907f2a7f466bda59ec
-sql:
-- schema: schema.sql
-  queries: query.sql
-  engine: postgresql
-  codegen:
-  - plugin: sqlite-c
-    out: db
-    options:
-      package: db
-```
+- SQLite `:exec` and `:one` queries with contiguous, non-null TEXT parameters.
+- TEXT result columns (nullable or non-null) and non-null INTEGER results.
+- ASCII SQL source; parameter values may be non-ASCII NUL-terminated strings.
+- Generated functions prepare, bind, step, and finalize statements, and return
+  SQLite status codes. `:exec` returns a changed-row count. `:one` returns
+  `SQLITE_NOTFOUND` when no row exists and copies text into owned allocations;
+  call the generated row's `_free` function after a successful read.
+- Generated functions use the caller's `sqlite3 *` connection and do not start,
+  commit, or roll back transactions. The application owns transaction policy.
 
-## Building from source
+Other databases, SQL commands, parameter/result types, nullable INTEGER results,
+embedded NUL result strings and non-ASCII SQL source are rejected. `:one`
+returns the first row and does not assert uniqueness. Keep queries and schema
+under version control and test generated functions with your own transactions.
 
-Assuming you have the Go toolchain set up, from the project root you can simply `make all`.
+## Build and configure
+
+Build the process plugin with Go 1.23 or newer:
 
 ```sh
-make all
+go test ./...
+go build -o sqlc-gen-c ./plugin
 ```
 
-This will produce a standalone binary and a WASM blob in the `bin` directory.
-They don't depend on each other, they're just two different plugin styles. You can
-use either with sqlc, but we recommend WASM and all of the configuration examples
-here assume you're using a WASM plugin.
-
-To use a local WASM build with sqlc, just update your configuration with a `file://`
-URL pointing at the WASM blob in your `bin` directory:
-
-```yaml
-plugins:
-- name: golang
-  wasm:
-    url: file:///path/to/bin/sqlc-gen-go.wasm
-    sha256: ""
-```
-
-As-of sqlc v1.24.0 the `sha256` is optional, but without it sqlc won't cache your
-module internally which will impact performance.
-
-## Migrating from sqlc's built-in Go codegen
-
-We’ve worked hard to make switching to sqlc-gen-go as seamless as possible. Let’s say you’re generating Go code today using a sqlc.yaml configuration that looks something like this:
-
-```yaml
-version: 2
-sql:
-- schema: "query.sql"
-  queries: "query.sql"
-  engine: "postgresql"
-  gen:
-    go:
-      package: "db"
-      out: "db"
-      emit_json_tags: true
-      emit_pointers_for_null_types: true
-      query_parameter_limit: 5
-      overrides:
-      - column: "authors.id"
-        go_type: "your/package.SomeType"
-      rename:
-        foo: "bar"
-```
-
-To use the sqlc-gen-go WASM plugin for Go codegen, your config will instead look something like this:
-
-```yaml
-version: 2
-plugins:
-- name: golang
-  wasm:
-    url: https://downloads.sqlc.dev/plugin/sqlc-gen-go_1.3.0.wasm
-    sha256: e8206081686f95b461daf91a307e108a761526c6768d6f3eca9781b0726b7ec8
-sql:
-- schema: "query.sql"
-  queries: "query.sql"
-  engine: "postgresql"
-  codegen:
-  - plugin: golang
-    out: "db"
-    options:
-      package: "db"
-      emit_json_tags: true
-      emit_pointers_for_null_types: true
-      query_parameter_limit: 5
-      overrides:
-      - column: "authors.id"
-        go_type: "your/package.SomeType"
-      rename:
-        foo: "bar"
-```
-
-The differences are:
-* An additional top-level `plugins` list with an entry for the Go codegen WASM
-  plugin. If you’ve built the plugin from source you’ll want to use a
-  `file://` URL. The `sha256` field is required, but will be optional in the
-  upcoming sqlc v1.24.0 release.
-* Within the `sql` block, rather than `gen` with `go` nested beneath you’ll
-  have a `codegen` list with an entry referencing the plugin name from the
-  top-level `plugins` list. All options from the current `go` configuration
-  block move as-is into the `options` block within `codegen`. The only special
-  case is `out`, which moves up a level into the `codegen` configuration
-  itself.
-
-### Global overrides and renames
-
-If you have global overrides or renames configured, you’ll need to move those to the new top-level `options` field. Replace the existing `go` field name with the name you gave your plugin in the `plugins` list. We’ve used `"golang"` in this example.
-
-If your existing configuration looks like this:
-
-```yaml
-version: "2"
-overrides:
-  go:
-    rename:
-      id: "Identifier"
-    overrides:
-    - db_type: "timestamptz"
-      nullable: true
-      engine: "postgresql"
-      go_type:
-        import: "gopkg.in/guregu/null.v4"
-        package: "null"
-        type: "Time"
-...
-```
-
-Then your updated configuration would look something like this:
+Point sqlc's version 2 configuration at the built plugin, for example:
 
 ```yaml
 version: "2"
 plugins:
-- name: golang
-  wasm:
-    url: https://downloads.sqlc.dev/plugin/sqlc-gen-go_1.3.0.wasm
-    sha256: e8206081686f95b461daf91a307e108a761526c6768d6f3eca9781b0726b7ec8
-options:
-  golang:
-    rename:
-      id: "Identifier"
-    overrides:
-    - db_type: "timestamptz"
-      nullable: true
-      engine: "postgresql"
-      go_type:
-        import: "gopkg.in/guregu/null.v4"
-        package: "null"
-        type: "Time"
-...
+  - name: c-sqlite
+    process:
+      cmd: ./sqlc-gen-c
+sql:
+  - engine: sqlite
+    schema: schema.sql
+    queries: queries.sql
+    codegen:
+      - plugin: c-sqlite
+        out: generated
 ```
+
+Then run `sqlc generate`. The C code links SQLite directly and does not require a
+Go runtime. The original upstream WASM-oriented end-to-end fixtures are kept in
+`testdata/upstream-legacy-endtoend/`; they do not test this process-plugin fork.
+See `internal/sqlite_test.go` for the fork's generator tests. MIT licensed; see
+`LICENSE`.
