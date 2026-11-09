@@ -40,6 +40,7 @@ import (
 
 type Options struct {
 	// New
+	SQLiteQueryAPI string   `json:"sqlite_query_api,omitempty" yaml:"sqlite_query_api"`
 	Prefix         string   `json:"prefix,omitempty" yaml:"prefix"`
 	SQLTypeCase    string   `json:"sql_type_case,omitempty" yaml:"sql_type_case"`
 	StructTypeCase string   `json:"struct_type_case,omitempty" yaml:"struct_type_case"`

@@ -22,6 +22,41 @@ sql:
       package: db
 ```
 
+## SQLite direct query API (experimental)
+
+For SQLite, the `sqlite_query_api: direct` option selects an experimental C99
+API that uses `sqlite3 *` directly. This is opt-in: existing generation and
+other engines are unchanged. For example, using a locally built process plugin:
+
+```yaml
+version: "2"
+plugins:
+  - name: c
+    process:
+      cmd: ./bin/sqlc-gen-c
+sql:
+  - engine: sqlite
+    schema: schema.sql
+    queries: queries.sql
+    codegen:
+      - plugin: c
+        out: generated
+        options:
+          sqlite_query_api: direct
+```
+
+This API currently supports `:one` and `:exec`, contiguous non-null TEXT
+parameters, TEXT result columns (including nullable TEXT), and non-null INTEGER
+results. Unsupported types and commands are rejected. SQL source must be ASCII;
+parameter values are NUL-terminated strings and may be non-ASCII. A `:one`
+query returns the first row, or `SQLITE_NOTFOUND` if there is none. Successful
+rows own their copied text; free them using the generated `sqlc_<Query>_free`
+function. Each function finalizes its statement. The caller owns the database
+connection, transaction boundaries, and interpretation of SQLite errors.
+
+The test suite requires SQLite development headers, `libsqlite3`, and a C
+compiler to compile and run the generated SQLite fixture.
+
 ## Building from source
 
 Assuming you have the Go toolchain set up, from the project root you can simply `make all`.

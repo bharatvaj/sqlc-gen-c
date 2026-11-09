@@ -33,7 +33,7 @@ func TestEndToEnd(t *testing.T) {
 	testcases := FindTests(t, root, "base")
 	for _, tc := range testcases {
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// sqlc caches the shared local WASM plugin during generation.
 			runTest(t, tc)
 		})
 	}

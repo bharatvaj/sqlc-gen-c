@@ -33,6 +33,12 @@ func Generate(ctx context.Context, req *plugin.GenerateRequest) (*plugin.Generat
 	if err := opts.ValidateOpts(options); err != nil {
 		return nil, err
 	}
+	if options.SQLiteQueryAPI != "" {
+		if options.SQLiteQueryAPI != "direct" || req.GetSettings().GetEngine() != "sqlite" {
+			return nil, fmt.Errorf("sqlite_query_api must be direct and requires the sqlite engine")
+		}
+		return generateSQLite(req)
+	}
 
 	enums := buildEnums(req, options)
 	structs := buildStructs(req, options)

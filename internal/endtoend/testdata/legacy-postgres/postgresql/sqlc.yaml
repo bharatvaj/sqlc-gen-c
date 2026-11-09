@@ -1,0 +1,15 @@
+version: 2
+plugins:
+  - name: c
+    wasm:
+      url: file://../../../../../bin/sqlc-gen-c.wasm
+      sha256: ""
+sql:
+  - engine: postgresql
+    queries: queries.sql
+    schema: schema.sql
+    codegen:
+      - plugin: c
+        out: gen
+        options:
+          prefix: sql_
